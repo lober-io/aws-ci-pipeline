@@ -1,0 +1,25 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+    commands:
+      - python --version
+  pre_build:
+    commands:
+      - echo Pre build phase started on `date` 
+      - yum -y install jq
+      - S3BUCKET=`jq .S3BucketName $CODEBUILD_SRC_DIR_DeployArtifacts/StackOutput.json  -r`
+      - ls -ahl ./
+      - ls -ahl $CODEBUILD_SRC_DIR_DeployArtifacts
+      - echo $S3BUCKET
+      - sed -i "s/%STAGE%/$STAGE/g" website/index.html     
+      - aws s3 cp  --acl public-read ./website/index.html s3://$S3BUCKET/ 
+  build:
+    commands:
+      - echo In buildspec-cleanup.yml Build started on `date`
+      - echo Clean up template bucket to have fresh source
+      - aws s3 rm s3://$TEMPLATE_BUCKET/cloudformation/$STAGE --recursive
+  post_build:
+    commands:
+      - echo In buildspec-cleanup.yml Build completed on `date`

@@ -1,0 +1,90 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Main cf template for the base setup ",
+  
+    "Parameters" : {
+        
+        "CloudFormationStackPrefix" : {
+            "Type" : "String",
+            "Default": "aws-demo-cf-cd",
+            "Description" : "Prefix for the CloudFormation Stacks, will be joined with the stage, eg aws-demo-cf-cd-prod"
+        },
+        "ProdBranchName" : { 
+            "Type" : "String",
+            "Default": "master",
+            "Description" : "Name of your prod branch"
+        },
+        "DevBranchName" : { 
+            "Type" : "String",
+            "Default": "develop",
+            "Description" : "Name of your dev branch"
+        },
+        "QaBranchName" : { 
+            "Type" : "String",
+            "Default": "release",
+            "Description" : "Name of your main qa branch"
+        },
+        "SubscriberMail" : { 
+            "Type" : "String",
+            "Description" : "Email address for the SNS notifications"
+        },
+        "S3BucketDeployment" : { 
+            "Type" : "String",
+            "Description" : "S3 bucket name which used with the aws cli package / deploy"
+        },
+        "S3BucketFolder" : { 
+            "Type" : "String",
+            "Default" : "cd-pipeline",
+            "Description" : "s3 prefix folder for the S3 bucket"
+        }
+     },
+
+
+    "Resources" : {  
+
+        "CodeReposStack" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "code-repo-main.cf.json",
+                "Parameters" : {  }
+            }
+        },   
+
+        "CPStack" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "cf-pipeline-main.cf.json",
+                "Parameters" : { 
+                    "CloudFormationStackPrefix" : { "Ref" : "CloudFormationStackPrefix" },
+                    "InfraPipelineCodeCommitHttpUrl" : { "Fn::GetAtt" : [ "CodeReposStack", "Outputs.CloneUrlHttpInfraRepo" ] },
+                    "InfraPipelineCodeCommitRepoName" : { "Fn::GetAtt" : [ "CodeReposStack", "Outputs.NameInfraRepo" ] },
+                    "ProdBranchName" : { "Ref" : "ProdBranchName" },
+                    "DevBranchName" : { "Ref" : "DevBranchName" },
+                    "QaBranchName" : { "Ref" : "QaBranchName" },
+                    "SubscriberMail" : { "Ref" : "SubscriberMail" }
+                }
+            }
+        },
+
+        "LambdaStack" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "lambda.cf.json",
+                "Parameters" : { 
+                    "S3BucketDeployment" : { "Ref" : "S3BucketDeployment"},
+                    "S3BucketFolder" : { "Ref" : "S3BucketFolder" },
+                    "PipelineNameDev" :  { "Fn::GetAtt" : [ "CPStack", "Outputs.PipelineNameDev" ] },
+                    "PipelineNameQa" : { "Fn::GetAtt" : [ "CPStack", "Outputs.PipelineNameQa" ] },
+                    "PipelineNameProd" : { "Fn::GetAtt" : [ "CPStack", "Outputs.PipelineNameProd" ] }, 
+                }
+            }
+        }
+        
+    },
+
+    "Outputs" : {  }
+}

@@ -1,0 +1,8 @@
+{
+  "Parameters" : {       
+    "Stage": "dev"
+  },
+  "Tags" : {
+    "Stage" : "dev"
+  }
+}

@@ -1,0 +1,35 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Main cf template for multiple CodeRepositories",
+  
+    "Parameters" : {  },
+
+    "Resources" : {  
+
+        "RepoInfra" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "code-repo.cf.json",
+                "Parameters" : { 
+                  "CodeCommitRepoName" : "infra-deplyoment",
+                  "CodeCommitRepoDescription" : "All infrastructure demo code" 
+                }
+            }
+        },   
+
+
+    },
+
+    "Outputs" : { 
+        "CloneUrlHttpInfraRepo": {
+            "Value": { "Fn::GetAtt" : [ "RepoInfra", "Outputs.CloneUrlHttp" ] },
+            "Description": "CodeCommit HTTP URL infrastructure repository "
+        },
+        "NameInfraRepo": {
+            "Value": { "Fn::GetAtt" : [ "RepoInfra", "Outputs.Name" ] },
+            "Description": "CodeCommit repository name"
+        },
+     }
+}

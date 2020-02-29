@@ -1,0 +1,72 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Simple test stack for nested stacks",
+  
+    "Parameters" : { 
+      "Stage" : { "Type" : "String" }
+     },
+
+    "Conditions" : {
+        "ProdStage" : {"Fn::Equals" : [{"Ref" : "Stage"}, "prod"]}
+    },
+
+    "Resources" : {     
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "WebsiteConfiguration": {
+                    "IndexDocument": "index.html"
+                }
+            }    
+        },
+
+        
+        "S3BucketProd": {
+            "Type": "AWS::S3::Bucket",
+            "Condition" : "ProdStage",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "WebsiteConfiguration": {
+                    "IndexDocument": "index.html"
+                },                
+                "Tags": [
+                    {
+                        "Key": "TestConditionStage",
+                        "Value": { "Ref" : "Stage" }
+                    }
+                ]
+             }      
+        },
+
+
+                    
+
+    },
+
+
+    "Outputs" : { 
+        "S3BucketName" : {
+            "Value" : { "Ref": "S3Bucket" }
+        },
+        "S3BucketWebsite" : {
+            "Value" : { "Fn::GetAtt" : [ "S3Bucket", "WebsiteURL" ] }  
+        },
+        "S3BucketProdName" : {
+            "Value" : { "Ref": "S3Bucket" },
+            "Condition" : "ProdStage"
+        },
+        "S3BucketProdWebsite" : {
+            "Value" : { "Fn::GetAtt" : [ "S3BucketProd", "WebsiteURL" ] },
+            "Condition" : "ProdStage"
+        }
+    }
+
+
+}
+
+
+        
+
+
