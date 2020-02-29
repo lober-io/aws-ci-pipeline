@@ -1,0 +1,76 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "CodeCommit Repository",
+
+    "Parameters": {
+        "CodeCommitRepoName": {            
+            "Type": "String",
+            "Description": "CodeCommit Repository Name"
+        },
+        "CodeCommitRepoDescription": {
+            "Type" : "String",
+            "Description" : "CodeCommit Repository Description"
+        }
+    },
+
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "CodeCommit Configuration"
+                    },
+                    "Parameters": [
+                        "CodeCommitRepoName",
+                        "CodeCommitRepoDescription"
+                    ]
+                }                              
+            ],
+            "ParameterLabels": {
+                "CodeCommitRepoName" : {
+                    "default": "CodeCommit Repository Name"
+                },
+                "CodeCommitRepoDescription" : {
+                    "default": "CodeCommit Repository Description"
+                }
+            }
+        }
+    },
+
+    "Resources": {
+
+        "CodeCommitRepository": {
+            "Type": "AWS::CodeCommit::Repository",
+            "UpdateReplacePolicy": "Retain",
+            "Properties": {
+                "RepositoryDescription": { "Ref" : "CodeCommitRepoDescription" },
+                "RepositoryName":  { "Ref" : "CodeCommitRepoName" }
+            }
+        }                           
+
+    },
+
+    "Outputs": {
+        "Arn": {
+            "Value": { "Fn::GetAtt" : [ "CodeCommitRepository", "Arn" ] },
+            "Description": "CodeCommit Arn"
+        },
+
+        "CloneUrlHttp": {
+            "Value": { "Fn::GetAtt" : [ "CodeCommitRepository", "CloneUrlHttp" ] },
+            "Description": "CodeCommit HTTP URL"
+        },
+
+        "CloneUrlSsh": {
+            "Value": { "Fn::GetAtt" : [ "CodeCommitRepository", "CloneUrlSsh" ] },
+            "Description": "CodeCommit SSH URL"
+        },
+
+        "Name": {
+            "Value": { "Fn::GetAtt" : [ "CodeCommitRepository", "Name" ] },
+            "Description": "CodeCommit repository name"
+        },
+
+    }
+}

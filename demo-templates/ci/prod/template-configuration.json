@@ -1,0 +1,8 @@
+{
+  "Parameters" : {       
+    "Stage": "prod"
+  },
+  "Tags" : {
+    "Stage" : "prod"
+  }
+}

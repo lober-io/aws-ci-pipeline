@@ -1,0 +1,105 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Simple test stack",
+
+    "Metadata": {
+      "AWS::CloudFormation::Interface" : {         
+        "ParameterGroups": [
+          {
+          "Label": {
+            "default": "Stage Configuration"
+            },
+            "Parameters": [
+              "Stage"
+            ]
+          },
+          {
+          "Label": {
+            "default": "S3 Configuration"
+            },
+            "Parameters": [
+              "S3BucketName",
+              "S3ProjectFolderName",
+              "S3BucketRegion"              
+            ]
+          }
+        
+        ]
+      }
+    },
+
+  
+    "Parameters" : {        
+
+      "S3BucketName" : {
+        "Type" : "String",
+        "Description" : "Name of the S3 Bucket with the CF templates and Lambda ZIPs"
+      },
+
+      "S3ProjectFolderName" : {
+        "Type" : "String",
+        "Description" : "Name of the project folder in the S3 Bucket"
+      },
+      
+      "S3BucketRegion" : {
+        "Type" : "String",
+        "Description" : "Region of the S3 Bucket"
+      },
+
+      "Stage" : {
+        "Description" : "Environment stage",
+        "Default" : "dev",
+        "Type" : "String",
+        "AllowedValues" : ["dev", "qa", "prod"],
+        "ConstraintDescription" : "Defines the stage of the deployment"
+      }
+    },
+
+    "Conditions" : {
+        "ProdStage" : {"Fn::Equals" : [{"Ref" : "Stage"}, "prod"]}
+    },
+
+
+    "Resources" : {     
+      "NestedTestStack" : {
+        "Type" : "AWS::CloudFormation::Stack",
+        "DeletionPolicy": "Delete",
+        "Properties" : {           
+          "TemplateURL" :  { "Fn::Join" : [ "", [ "https://", { "Ref" : "S3BucketName" }, ".s3.", { "Ref" : "S3BucketRegion" },".amazonaws.com/", { "Ref" : "S3ProjectFolderName" }, "/", "templates/nested-stack.cf.json" ] ] }, 
+          "Parameters" : { 
+            "Stage" : { "Ref" : "Stage" }
+          },
+          "Tags" :
+            [
+              { "Key": "Stage", "Value": { "Ref" : "Stage" } } 
+            ] 
+        }
+      }  
+    },
+
+
+    "Outputs" : { 
+        "S3BucketName" : {
+            "Value" : { "Fn::GetAtt" : [ "NestedTestStack", "Outputs.S3BucketName" ] }
+        },
+        "S3BucketWebsite" : {
+            "Value" : { "Fn::GetAtt" : [ "NestedTestStack", "Outputs.S3BucketWebsite" ] }
+        },
+        "S3BucketProdName" : {
+            "Value" : { "Fn::GetAtt" : [ "NestedTestStack", "Outputs.S3BucketProdName" ] },
+            "Condition" : "ProdStage"
+        },
+        "S3BucketProdWebsite" : {
+            "Value" : { "Fn::GetAtt" : [ "NestedTestStack", "Outputs.S3BucketProdWebsite" ] },
+            "Condition" : "ProdStage"
+        }        
+    }
+
+
+}
+
+
+        
+
+

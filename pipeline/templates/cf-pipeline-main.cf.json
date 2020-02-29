@@ -1,0 +1,109 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Main cf template for multiple CodePipelines",
+  
+    "Parameters" : {        
+      "InfraPipelineCodeCommitHttpUrl" : { "Type" : "String" },
+      "InfraPipelineCodeCommitRepoName" : { "Type" : "String" },
+      "CloudFormationStackPrefix" : { "Type" : "String" },
+      "ProdBranchName" : { "Type" : "String" },
+      "DevBranchName" : { "Type" : "String" },
+      "QaBranchName" : { "Type" : "String" },
+      "SubscriberMail" : { "Type": "String" }
+     },
+
+
+    "Resources" : {  
+
+        "BuildStatusBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "WebsiteConfiguration": {
+                    "IndexDocument": "index.html"
+                }
+            }
+        },
+
+        "SnsTopic": {
+            "Type": "AWS::SNS::Topic"
+        },
+
+        "Prod" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "cf-pipeline.cf.json",
+                "Parameters" : { 
+                  "GitBranch" : { "Ref" : "ProdBranchName" },
+                  "DeploymentStage": "prod",
+                  "CodeCommitHttpUrl" : { "Ref" : "InfraPipelineCodeCommitHttpUrl" } ,
+                  "CodeCommitRepoName" : { "Ref" : "InfraPipelineCodeCommitRepoName" } ,
+                  "CloudFormationStackName" : { "Fn::Sub": "${CloudFormationStackPrefix}-prod" }, 
+                  "CloudFormationTemplatePath" : "templates/main.cf.json",
+                  "CloudFormationTemplateConfiguration" : "template-configuration.json",
+                  "BuildStatusBucket": { "Ref": "BuildStatusBucket" },
+                  "SnsTopicArn" : { "Ref": "SnsTopic" },
+                  "SubscriberMail" : { "Ref": "SubscriberMail" }
+                }
+            }
+        },
+        
+        "Dev" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "cf-pipeline.cf.json",
+                "Parameters" : { 
+                  "GitBranch" : { "Ref" : "DevBranchName" },
+                  "DeploymentStage": "dev",
+                  "CodeCommitHttpUrl" : { "Ref" : "InfraPipelineCodeCommitHttpUrl" } ,
+                  "CodeCommitRepoName" : { "Ref" : "InfraPipelineCodeCommitRepoName" } ,
+                  "CloudFormationStackName" : { "Fn::Sub": "${CloudFormationStackPrefix}-dev" }, 
+                  "CloudFormationTemplatePath" : "templates/main.cf.json",
+                  "CloudFormationTemplateConfiguration" : "template-configuration.json",
+                  "BuildStatusBucket": { "Ref": "BuildStatusBucket" },
+                  "SnsTopicArn" : { "Ref": "SnsTopic" },
+                  "SubscriberMail" : { "Ref": "SubscriberMail" }
+                }
+            }
+        },
+        
+        "Qa" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DeletionPolicy": "Delete",
+            "Properties" : {           
+                "TemplateURL" : "cf-pipeline.cf.json",
+                "Parameters" : { 
+                  "GitBranch" : { "Ref" : "QaBranchName" },
+                  "DeploymentStage": "qa",
+                  "CodeCommitHttpUrl" : { "Ref" : "InfraPipelineCodeCommitHttpUrl" } ,
+                  "CodeCommitRepoName" : { "Ref" : "InfraPipelineCodeCommitRepoName" } ,
+                  "CloudFormationStackName" : { "Fn::Sub": "${CloudFormationStackPrefix}-qa" }, 
+                  "CloudFormationTemplatePath" : "templates/main.cf.json",
+                  "CloudFormationTemplateConfiguration" : "template-configuration.json",
+                  "BuildStatusBucket": { "Ref": "BuildStatusBucket" },
+                  "SnsTopicArn" : { "Ref": "SnsTopic" },
+                  "SubscriberMail" : { "Ref": "SubscriberMail" }
+                }
+            }
+        }
+     
+    },
+
+    "Outputs" : {
+        "PipelineNameProd": {
+            "Value": { "Fn::GetAtt" : [ "Prod", "Outputs.PipelineName" ] },
+            "Description": "Name of the prod CodePipeline"
+        },
+        "PipelineNameQa": {
+            "Value": { "Fn::GetAtt" : [ "Qa", "Outputs.PipelineName" ] },
+            "Description": "Name of the qa CodePipeline"
+        },
+        "PipelineNameDev": {
+            "Value": { "Fn::GetAtt" : [ "Dev", "Outputs.PipelineName" ] },
+            "Description": "Name of the dev CodePipeline"
+        }
+     }
+}

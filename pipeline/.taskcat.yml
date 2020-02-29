@@ -1,0 +1,29 @@
+project:
+  owner: mail@example.org
+  name: aws-pipeline-demo-1
+  regions:
+    - us-east-1
+    - eu-west-1
+    - us-west-2
+    - eu-central-1
+  package_lambda: true
+  build_submodules: true
+  lambda_source_path: ./lambda/source
+  lambda_zip_path: ./lambda/zip
+  template: ./templates/main.cf.json
+  parameters:
+    S3BucketName: $[taskcat_autobucket]
+    S3ProjectFolderName: aws-pipeline-demo-1 
+    SubscriberMail: mail@example.org
+  tags:
+    deployment-source: taskcat
+    deployment-type: test
+    deployment-stage: prod
+tests:
+  default:
+    regions:
+      - eu-central-1
+  multi-region:
+    regions:
+      - us-east-1
+      - eu-central-1

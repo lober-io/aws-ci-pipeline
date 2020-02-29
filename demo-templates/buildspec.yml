@@ -1,0 +1,44 @@
+version: 0.2
+env:
+  exported-variables:
+    - CODEBUILD_BUILD_NUMBER
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+    commands:
+      - echo install phase started on `date`
+      - python --version
+      - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+      - python3 get-pip.py
+      - pip install --upgrade pip
+      - pip3 install taskcat
+  pre_build:
+    commands:
+      - echo Pre build phase started on `date` 
+  build:
+    commands:
+      - echo Build phase started on `date`            
+      - taskcat test run -i ci/$STAGE/.taskcat.yml
+      - |
+        if $(grep -Fq "CREATE_FAILED" taskcat_outputs/index.html)
+        then
+          echo Taskcat FAILED!
+          exit 1
+        else
+          echo Taskcat PASSED!
+          exit 0
+        fi
+    finally:  
+      - ls -1 taskcat_outputs | while read LOG; do cat taskcat_outputs/$LOG; done
+      - echo Uploading report to S3 $OUTPUT_BUCKET/$STAGE/$CODEBUILD_BUILD_NUMBER 
+      - aws s3 cp --recursive ./taskcat_outputs s3://$OUTPUT_BUCKET/$STAGE/$CODEBUILD_BUILD_NUMBER/       
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Uploading to S3 $TEMPLATE_BUCKET/cloudformation/$STAGE 
+      - aws s3 sync . s3://$TEMPLATE_BUCKET/cloudformation/$STAGE --exclude "taskcat_outputs" 
+artifacts:
+  files:
+    - '**/*'
+    

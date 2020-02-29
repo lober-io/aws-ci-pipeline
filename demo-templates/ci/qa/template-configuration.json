@@ -1,0 +1,8 @@
+{
+  "Parameters" : {       
+    "Stage": "qa"
+  },
+  "Tags" : {
+    "Test" : "TagTest"
+  }
+}

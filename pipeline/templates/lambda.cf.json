@@ -1,0 +1,185 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "cf template for the lambda function",
+  
+    "Parameters" : {        
+        "S3BucketDeployment" : { "Type" : "String"},
+        "S3BucketFolder" : { "Type" : "String" },
+        "PipelineNameDev" :  { "Type" : "String" },
+        "PipelineNameQa" : { "Type" : "String" },
+        "PipelineNameProd" : { "Type" : "String" }
+     },
+
+    "Resources" : {  
+
+        "LambdaExecutionRoleDuplicateCodePipeline": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "AssumeRolePolicyDocument" : {
+                "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]   
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+            }
+        },
+
+        "LambdaPolicyDuplicateCodePipeline": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName" : "PolicyLambdaFunctionReactSpotWarning",
+                "PolicyDocument" : {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "sid0",
+                            "Effect": "Allow",
+                            "Action": [
+                                "codepipeline:CreatePipeline",
+                                "codepipeline:ListPipelines",
+                                "codepipeline:GetPipeline",
+                                "codepipeline:UpdatePipeline",
+                                "codepipeline:DeletePipeline",
+                                "codepipeline:GetPipelineState"
+                                
+                            ],
+                            "Resource": [                                
+                                { "Fn::Join": [ "", [ "arn:aws:codepipeline:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":*" ] ] }
+                            ]
+                        },
+                        {
+                            "Sid": "sid1",
+                            "Effect": "Allow",
+                            "Action": [ 
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"                            
+                            ],
+                            "Resource": "arn:aws:logs:*:*:*"
+                        },
+                        {
+                            "Sid": "sid2",
+                            "Effect": "Allow",
+                            "Action": "iam:PassRole",
+                            "Resource": "arn:aws:iam::*:role/*",
+                        }
+                    ]
+                },
+                "Roles" : [ 
+                        { "Ref": "LambdaExecutionRoleDuplicateCodePipeline" }
+                    ] 
+            }   
+        },
+      
+
+        "DuplicateCodePipelines": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {                
+                    "S3Bucket": { "Ref" : "S3BucketDeployment" } ,
+                    "S3Key":  { "Fn::Join" : [ "", [  { "Ref" : "S3BucketFolder" }, "/lambda/zip/duplicate_pipeline/lambda.zip"] ] }
+                }, 
+                "Environment": {
+                    "Variables" : { 
+                        "devPipeline" :  { "Ref" : "PipelineNameDev" },
+                        "qaPipeline" : { "Ref" : "PipelineNameQa" },
+                        "prodPipeline" : { "Ref" : "PipelineNameProd" },
+                        "developBranchName" : "develop",
+                        "releaseBranchName" : "release",
+                        "featureBranchName" : "feature",
+                        "hotfixBranchName" : "hotfix",
+                        "masterBranchName" : "master",
+                    }
+                },
+                "Handler": "lambda_function.lambda_handler",
+                "Role": { "Fn::GetAtt" : [ "LambdaExecutionRoleDuplicateCodePipeline", "Arn" ]},
+                "Runtime": "python3.8",
+                "FunctionName": "duplicate_pipeline",
+                "MemorySize": 128,
+                "Timeout": 30,
+                "Description": "Duplicates the deployment pipelines on the creation of new branches or pullrequests and also deletes it when the pr is closed or the branch is deleted"
+            }   
+        },
+
+        "EventRuleLambdaDuplicateCodePipelinesPR": {
+            "Type":"AWS::Events::Rule",
+            "Properties": {
+                "Description": "EventRule",
+                "EventPattern": {
+                    "detail-type": [
+                        "CodeCommit Pull Request State Change"
+                    ],
+                    "source": [
+                        "aws.codecommit"
+                    ]
+                },
+                "State": "ENABLED",
+                "Targets": [{
+                    "Arn": { "Fn::GetAtt": ["DuplicateCodePipelines", "Arn"] },
+                    "Id": "TargetFunctionLambdaDuplicateCodePipelines"
+                }]
+            }
+        },        
+
+        "PermissionEventRuleInvokeLambda1": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": { "Ref": "DuplicateCodePipelines" },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "events.amazonaws.com",
+                "SourceArn": { "Fn::GetAtt": ["EventRuleLambdaDuplicateCodePipelinesPR", "Arn"] }
+            }      
+        },
+
+        "EventRuleLambdaDuplicateCodePipelinesBranch": {
+            "Type":"AWS::Events::Rule",
+            "Properties": {
+                "Description": "EventRule",
+                "EventPattern": {
+                    "detail-type": [
+                        "CodeCommit Repository State Change"
+                    ],
+                    "source": [
+                        "aws.codecommit"
+                    ],
+                    "detail" : {
+                       "referenceType": [ 
+                            "branch" 
+                        ] 
+                    }
+                },
+                "State": "ENABLED",
+                "Targets": [{
+                    "Arn": { "Fn::GetAtt": ["DuplicateCodePipelines", "Arn"] },
+                    "Id": "TargetFunctionLambdaDuplicateCodePipelines"
+                }]
+            }
+        },        
+
+        "PermissionEventRuleInvokeLambda2": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": { "Ref": "DuplicateCodePipelines" },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "events.amazonaws.com",
+                "SourceArn": { "Fn::GetAtt": ["EventRuleLambdaDuplicateCodePipelinesBranch", "Arn"] }
+            }      
+        }
+
+    },
+
+    "Outputs" : {  }
+}
